@@ -40,6 +40,27 @@ def fetch_mails(projects_data_filename, base_url, storage_path, batchsize=3000):
             batch_end_id += batchsize
 
 
+def transform_to_mboxo(projects_data_filename, storage_path, from_line):
+    projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
+    for row_id, project_data in projects_data.iterrows():
+        raw_project_messages_filename = os.path.join(
+            storage_path,
+            'raw',
+            project_data.list_id+'.mbox')
+        mboxo_project_messages_filename = os.path.join(
+            storage_path,
+            'mboxo',
+            project_data.list_id+'.mbox')
+
+        with open(raw_project_messages_filename, 'r') as raw_msgs:
+            with open(mboxo_project_messages_filename, 'w') as mboxo_msgs:
+                for line in raw_msgs:
+                    if line.startswith('From ') and line[5:].strip() != from_line:
+                        mboxo_msgs.write('>'+line)
+                    else:
+                        mboxo_msgs.write(line)
+
+
 def count_mails(projects_data_filename, storage_path):
     projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
     for row_id, project_data in projects_data.iterrows():
@@ -58,6 +79,8 @@ if __name__ == '__main__':
     projects_data_filename = '/home/zormit/ownCloud/Uni/msemester5/innovation-thesis/data/projects.csv'
 
     gmane_base_url = 'http://download.gmane.org'
+    gmane_from_line = 'news@gmane.org Tue Mar 04 03:33:20 2003'
 
     fetch_mails(projects_data_filename, gmane_base_url, storage_path)
     count_mails(projects_data_filename, storage_path)
+    transform_to_mboxo(projects_data_filename, storage_path, gmane_from_line)
