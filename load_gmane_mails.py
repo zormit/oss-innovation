@@ -61,16 +61,18 @@ def transform_to_mboxo(projects_data_filename, storage_path, from_line):
                         mboxo_msgs.write(line)
 
 
-def count_mails(projects_data_filename, storage_path):
+def count_mails(projects_data_filename, storage_path, from_line):
     projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
     for row_id, project_data in projects_data.iterrows():
         project_messages_filename = os.path.join(
             storage_path,
+            'mboxo',
             project_data.list_id+'.mbox')
         mbox = mailbox.mbox(project_messages_filename)
         i = 0
         for m in mbox:
             i += 1
+            assert m.get_from() == from_line
         print("{} contains {} mails".format(project_data.list_id, i))
 
 
@@ -82,5 +84,5 @@ if __name__ == '__main__':
     gmane_from_line = 'news@gmane.org Tue Mar 04 03:33:20 2003'
 
     fetch_mails(projects_data_filename, gmane_base_url, storage_path)
-    count_mails(projects_data_filename, storage_path)
+    count_mails(projects_data_filename, storage_path, gmane_from_line)
     transform_to_mboxo(projects_data_filename, storage_path, gmane_from_line)
