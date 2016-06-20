@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import pandas as pd
 import requests
@@ -61,6 +62,27 @@ def transform_to_mboxo(projects_data_filename, storage_path, from_line):
                         mboxo_msgs.write(line)
 
 
+def extract_headers_only(projects_data_filename, storage_path):
+    projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
+    for row_id, project_data in projects_data.iterrows():
+        mboxo_project_messages_filename = os.path.join(
+            storage_path,
+            'mboxo',
+            project_data.list_id+'.mbox')
+        headers_project_messages_filename = os.path.join(
+            storage_path,
+            'header',
+            project_data.list_id+'.pkl')
+
+        mbox = mailbox.mbox(mboxo_project_messages_filename)
+        headers = []
+        for m in mbox:
+            headers.append(dict(m))
+
+        with open(headers_project_messages_filename, 'wb') as headers_dump:
+            pickle.dump(headers, headers_dump)
+
+
 def count_mails(projects_data_filename, storage_path, from_line):
     projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
     for row_id, project_data in projects_data.iterrows():
@@ -86,3 +108,4 @@ if __name__ == '__main__':
     fetch_mails(projects_data_filename, gmane_base_url, storage_path)
     count_mails(projects_data_filename, storage_path, gmane_from_line)
     transform_to_mboxo(projects_data_filename, storage_path, gmane_from_line)
+    extract_headers_only(projects_data_filename, storage_path)
