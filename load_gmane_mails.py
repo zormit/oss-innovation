@@ -62,6 +62,37 @@ def transform_to_mboxo(projects_data_filename, storage_path, from_line):
                         mboxo_msgs.write(line)
 
 
+def transform_to_mboxo_generic(projects_data_filename, storage_path, from_line):
+    projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
+    for row_id, project_data in projects_data.iterrows():
+        raw_project_messages_filename = os.path.join(
+            storage_path,
+            'raw',
+            project_data.list_id+'.mbox')
+        mboxo_project_messages_filename = os.path.join(
+            storage_path,
+            'mboxo',
+            project_data.list_id+'.mbox')
+
+        with open(raw_project_messages_filename, 'r') as raw_msgs:
+            with open(mboxo_project_messages_filename, 'w') as mboxo_msgs:
+                previous_line = None
+                for line in raw_msgs:
+                    if previous_line is not None:
+                        if previous_line.startswith('From '):
+                            if line.startswith('From:'):
+                                # valid From
+                                mboxo_msgs.write(previous_line)
+                            else:
+                                # invalid From
+                                mboxo_msgs.write('>'+previous_line)
+                                print(previous_line)
+                        else:
+                            # normal line
+                            mboxo_msgs.write(previous_line)
+                    previous_line = line
+
+
 def extract_headers_only(projects_data_filename, storage_path):
     projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
     for row_id, project_data in projects_data.iterrows():
