@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 import requests
 import mailbox
+import nntplib
 
 
 def fetch_mails_range(base_url, list_id, start_id, end_id):
@@ -129,14 +130,39 @@ def count_mails(projects_data_filename, storage_path, from_line):
         print("{} contains {} mails".format(project_data.list_id, i))
 
 
+def fetch_gmane_ids(projects_data_filename, gmane_news_url, storage_path):
+    news_server = nntplib.NNTP(gmane_news_url)
+
+    projects_data = pd.read_csv(projects_data_filename, skipfooter=1, engine='python')
+    for _, project_data in projects_data.iterrows():
+        project_overview_filename = os.path.join(
+            storage_path,
+            'nntp_overview',
+            project_data.list_id+'.pkl')
+
+        print('connecting to {}'.format(project_data.list_id))
+        resp, _, _, _, _ = news_server.group(project_data.list_id)
+        print(resp)
+        print('fetching overviews...')
+        resp, overviews = news_server.over((project_data.start_id, project_data.end_id))
+        print(resp)
+        with open(project_overview_filename, 'wb') as overviews_dump:
+            pickle.dump(overviews, overviews_dump)
+
+    news_server.quit()
+
+
 if __name__ == '__main__':
     storage_path = '/home/zormit/bigdata/innovation-thesis/'
     projects_data_filename = '/home/zormit/ownCloud/Uni/msemester5/innovation-thesis/data/projects.csv'
 
     gmane_base_url = 'http://download.gmane.org'
+    gmane_news_url = 'news.gmane.org'
     gmane_from_line = 'news@gmane.org Tue Mar 04 03:33:20 2003'
 
     fetch_mails(projects_data_filename, gmane_base_url, storage_path)
     count_mails(projects_data_filename, storage_path, gmane_from_line)
     transform_to_mboxo(projects_data_filename, storage_path, gmane_from_line)
+    transform_to_mboxo_generic(projects_data_filename, storage_path, gmane_from_line)
     extract_headers_only(projects_data_filename, storage_path)
+    fetch_gmane_ids(projects_data_filename, gmane_news_url, storage_path)
