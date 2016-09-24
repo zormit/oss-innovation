@@ -25,7 +25,7 @@ def cleanContent(msg):
 
 def jsonifyMessage(msg):
     json_msg = {'parts': []}
-    for (k, v) in msg.items():
+    for (k, v) in list(msg.items()):
         json_msg[k] = v.decode('utf-8', 'ignore')
 
     # The To, CC, and Bcc fields, if present, could have multiple items
@@ -50,7 +50,7 @@ def jsonifyMessage(msg):
             json_part['content'] = cleanContent(content)
 
             json_msg['parts'].append(json_part)
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write('Skipping message - error encountered (%s)\n' % (str(e), ))
     finally:
         return json_msg
@@ -67,7 +67,7 @@ class Encoder(json.JSONEncoder):
 # The generator itself...
 def gen_json_msgs(mb):
     while 1:
-        msg = mb.next()
+        msg = next(mb)
         if msg is None:
             break
         yield jsonifyMessage(msg)
