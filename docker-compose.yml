@@ -1,0 +1,9 @@
+elk:
+  image: sebp/elk
+  environment:
+    - LOGSTASH_START=0
+  ports:
+    - "5601:5601"
+    - "9200:9200"
+    - "5044:5044"
+    - "5000:5000"
