@@ -2,10 +2,9 @@
 
 import sys
 import mailbox
-import email
 import quopri
 import json
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 
 MBOX = sys.argv[1]
 OUT_FILE = sys.argv[2]
@@ -19,14 +18,14 @@ def cleanContent(msg):
 
     # Strip out HTML tags, if any are present
 
-    soup = BeautifulSoup(msg)
+    soup = BeautifulSoup(msg, "html.parser")
     return ''.join(soup.findAll(text=True))
 
 
 def jsonifyMessage(msg):
     json_msg = {'parts': []}
     for (k, v) in list(msg.items()):
-        json_msg[k] = v.decode('utf-8', 'ignore')
+        json_msg[k] = v
 
     # The To, CC, and Bcc fields, if present, could have multiple items
     # Note that not all of these fields are necessarily defined
@@ -38,7 +37,7 @@ def jsonifyMessage(msg):
             '\n', '').replace(
             '\t', '').replace(
             '\r', '').replace(
-            ' ', '').decode('utf-8', 'ignore').split(',')
+            ' ', '').split(',')
 
     try:
         for part in msg.walk():
@@ -46,7 +45,7 @@ def jsonifyMessage(msg):
             if part.get_content_maintype() == 'multipart':
                 continue
             json_part['contentType'] = part.get_content_type()
-            content = part.get_payload(decode=False).decode('utf-8', 'ignore')
+            content = part.get_payload(decode=False)
             json_part['content'] = cleanContent(content)
 
             json_msg['parts'].append(json_part)
@@ -66,11 +65,8 @@ class Encoder(json.JSONEncoder):
 
 # The generator itself...
 def gen_json_msgs(mb):
-    while 1:
-        msg = next(mb)
-        if msg is None:
-            break
+    for msg in mb:
         yield jsonifyMessage(msg)
 
-mbox = mailbox.UnixMailbox(open(MBOX, 'rb'), email.message_from_file)
-json.dump(gen_json_msgs(mbox), open(OUT_FILE, 'wb'), indent=4, cls=Encoder)
+mbox = mailbox.mbox(MBOX)
+json.dump(gen_json_msgs(mbox), open(OUT_FILE, 'w'), indent=4, cls=Encoder)
