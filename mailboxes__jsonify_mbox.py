@@ -5,6 +5,7 @@ import mailbox
 import quopri
 import json
 from bs4 import BeautifulSoup
+import pandas as pd
 
 MBOX = sys.argv[1]
 OUT_FILE = sys.argv[2]
@@ -55,6 +56,36 @@ def jsonifyMessage(msg):
         return json_msg
 
 
+def compute_mails_per_id(json_msgs):
+    mails_per_id = dict()
+    for msg in json_msgs:
+        mid = msg.get('Message-ID')
+        assert mid is not None
+        assert mid not in mails_per_id
+        mails_per_id[mid] = msg
+    return mails_per_id
+
+
+def get_reply_to_root(current_id, mails_per_id):
+    # TODO: dynamic programming
+    while True:
+        current_mail = mails_per_id.get(current_id)
+        if current_mail is None:
+            break
+        root_id = current_id
+        current_id = current_mail.get('In-Reply-To')
+        if current_id is None:
+            break
+        assert len(current_id.split(' ')) == 1
+    return root_id
+
+
+def add_thread_root(mails_per_id):
+    for mid, msg in mails_per_id.items():
+        root = get_reply_to_root(mid, mails_per_id)
+        msg['Thread-Root'] = root
+
+
 # There's a lot of data to process, so use a generator to do it. See http://wiki.python.org/moin/Generators
 # Using a generator requires a trivial custom encoder be passed to json for serialization of objects
 class Encoder(json.JSONEncoder):
@@ -69,4 +100,11 @@ def gen_json_msgs(mb):
         yield jsonifyMessage(msg)
 
 mbox = mailbox.mbox(MBOX)
-json.dump(gen_json_msgs(mbox), open(OUT_FILE, 'w'), indent=4, cls=Encoder)
+json_msgs = gen_json_msgs(mbox)
+mails_per_id = compute_mails_per_id(json_msgs)
+add_thread_root(mails_per_id)
+
+json.dump(mails_per_id.values(), open(OUT_FILE, 'w'), indent=4, cls=Encoder)
+
+mails = pd.DataFrame.from_dict(mails_per_id, orient='index')
+# print(mails.groupby('Thread-Root').Subject.count())
